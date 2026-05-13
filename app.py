@@ -20,9 +20,7 @@ from langchain_community.vectorstores import FAISS
 
 from langchain_groq import ChatGroq
 
-# =========================
-# LOAD ENV
-# =========================
+
 
 load_dotenv()
 
@@ -30,18 +28,13 @@ groq_api_key = os.getenv(
     "GROQ_API_KEY"
 )
 
-# =========================
-# PAGE CONFIG
-# =========================
+
 
 st.set_page_config(
     page_title="Healthcare RAG Assistant",
     layout="wide"
 )
 
-# =========================
-# SIDEBAR
-# =========================
 
 with st.sidebar:
 
@@ -114,7 +107,7 @@ if uploaded_files:
 
         os.remove(old_path)
 
-    # Save new uploaded PDFs
+
 
     for uploaded_file in uploaded_files:
 
@@ -138,7 +131,7 @@ if uploaded_files:
     st.cache_resource.clear()
 
     st.success(
-        "PDFs uploaded successfully!"
+        "PDFs uploaded and vector database refreshed successfully!"
     )
 
 # =========================
@@ -203,7 +196,9 @@ def load_vectorstore():
 
         documents.extend(docs)
 
-    # Text Splitting
+    # =========================
+    # TEXT SPLITTING
+    # =========================
 
     text_splitter = (
         RecursiveCharacterTextSplitter(
@@ -216,7 +211,9 @@ def load_vectorstore():
         documents
     )
 
-    # Create FAISS DB
+    # =========================
+    # CREATE VECTORSTORE
+    # =========================
 
     vectorstore = FAISS.from_documents(
         split_docs,
@@ -288,7 +285,9 @@ question = st.chat_input(
 
 if question:
 
-    # Store User Message
+    # =========================
+    # STORE USER MESSAGE
+    # =========================
 
     st.session_state.messages.append(
         {
@@ -297,7 +296,9 @@ if question:
         }
     )
 
-    # Display User Message
+    # =========================
+    # DISPLAY USER MESSAGE
+    # =========================
 
     with st.chat_message("user"):
 
@@ -307,13 +308,17 @@ if question:
         "Generating answer..."
     ):
 
-        # Retrieve Docs
+        # =========================
+        # RETRIEVE DOCUMENTS
+        # =========================
 
         retrieved_docs = retriever.invoke(
             question
         )
 
-        # Context Creation
+        # =========================
+        # CONTEXT CREATION
+        # =========================
 
         context = "\n\n".join(
             [
@@ -324,7 +329,9 @@ if question:
             ]
         )
 
-        # Sources
+        # =========================
+        # SOURCES
+        # =========================
 
         sources = list(
             set(
@@ -335,7 +342,9 @@ if question:
             )
         )
 
-        # Prompt
+        # =========================
+        # PROMPT
+        # =========================
 
         prompt = f"""
 You are a healthcare AI assistant.
@@ -354,20 +363,34 @@ Question:
 {question}
 """
 
-        # LLM Response
+        # LLM RESPONSE
 
         response = llm.invoke(
             prompt
         )
 
-        # Assistant Response
+        # =========================
+        # ASSISTANT RESPONSE
+        # =========================
 
         with st.chat_message(
             "assistant"
         ):
 
-            st.markdown(
-                response.content
+            response_placeholder = st.empty()
+
+            full_response = ""
+
+            for word in response.content.split():
+
+                full_response += word + " "
+
+                response_placeholder.markdown(
+                    full_response + "▌"
+                )
+
+            response_placeholder.markdown(
+                full_response
             )
 
             st.subheader(
@@ -377,8 +400,9 @@ Question:
             for source in sources:
 
                 st.write(source)
+                
+    # STORE ASSISTANT RESPONSE
 
-    # Store Assistant Response
 
     st.session_state.messages.append(
         {
