@@ -20,7 +20,17 @@ from langchain_community.vectorstores import FAISS
 
 from langchain_groq import ChatGroq
 
+from langchain.memory import (
+    ConversationBufferMemory
+)
 
+from langchain.chains import (
+    ConversationalRetrievalChain
+)
+
+# =========================
+# LOAD ENV
+# =========================
 
 load_dotenv()
 
@@ -28,13 +38,18 @@ groq_api_key = os.getenv(
     "GROQ_API_KEY"
 )
 
-
+# =========================
+# PAGE CONFIG
+# =========================
 
 st.set_page_config(
     page_title="Healthcare RAG Assistant",
     layout="wide"
 )
 
+# =========================
+# SIDEBAR
+# =========================
 
 with st.sidebar:
 
@@ -89,25 +104,14 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files:
 
-    # Create uploads folder
-
     os.makedirs(
         "uploads",
         exist_ok=True
     )
 
-    # Delete old uploaded PDFs
+    # Check if files are new
 
-    for old_file in os.listdir("uploads"):
-
-        old_path = os.path.join(
-            "uploads",
-            old_file
-        )
-
-        os.remove(old_path)
-
-
+    new_upload = False
 
     for uploaded_file in uploaded_files:
 
@@ -116,24 +120,35 @@ if uploaded_files:
             uploaded_file.name
         )
 
-        with open(save_path, "wb") as f:
+        # Save only if new file
 
-            f.write(uploaded_file.read())
+        if not os.path.exists(save_path):
 
-    # Delete old vector database
+            with open(save_path, "wb") as f:
 
-    if os.path.exists(VECTOR_DB_PATH):
+                f.write(uploaded_file.read())
 
-        shutil.rmtree(VECTOR_DB_PATH)
+            new_upload = True
 
-    # Clear cache
+    # Rebuild vector DB only for new uploads
 
-    st.cache_resource.clear()
+    if new_upload:
 
-    st.success(
-        "PDFs uploaded and vector database refreshed successfully!"
-    )
+        if os.path.exists(VECTOR_DB_PATH):
 
+            shutil.rmtree(VECTOR_DB_PATH)
+
+        st.cache_resource.clear()
+
+        st.success(
+            "PDFs uploaded and vector database refreshed!"
+        )
+
+    else:
+
+        st.info(
+            "Using existing vector database."
+        )
 # =========================
 # EMBEDDINGS
 # =========================
@@ -143,13 +158,13 @@ embeddings = HuggingFaceEmbeddings(
 )
 
 # =========================
-# VECTOR DB CREATION
+# VECTORSTORE
 # =========================
 
 @st.cache_resource
 def load_vectorstore():
 
-    # If vector DB already exists
+    # Load existing vector DB
 
     if os.path.exists(VECTOR_DB_PATH):
 
@@ -161,7 +176,7 @@ def load_vectorstore():
 
         return vectorstore
 
-    # Else create vector DB
+    # Create new vector DB
 
     documents = []
 
@@ -196,9 +211,7 @@ def load_vectorstore():
 
         documents.extend(docs)
 
-    # =========================
-    # TEXT SPLITTING
-    # =========================
+    # Text Splitting
 
     text_splitter = (
         RecursiveCharacterTextSplitter(
@@ -211,9 +224,7 @@ def load_vectorstore():
         documents
     )
 
-    # =========================
-    # CREATE VECTORSTORE
-    # =========================
+    # Create FAISS DB
 
     vectorstore = FAISS.from_documents(
         split_docs,
@@ -241,12 +252,33 @@ retriever = vectorstore.as_retriever(
 )
 
 # =========================
+# MEMORY
+# =========================
+
+memory = ConversationBufferMemory(
+    memory_key="chat_history",
+    return_messages=True,
+    output_key="answer"
+)
+
+# =========================
 # LLM
 # =========================
 
 llm = ChatGroq(
     groq_api_key=groq_api_key,
     model_name="llama-3.1-8b-instant"
+)
+
+# =========================
+# CONVERSATIONAL CHAIN
+# =========================
+
+conversation_chain = ConversationalRetrievalChain.from_llm(
+    llm=llm,
+    retriever=retriever,
+    memory=memory,
+    return_source_documents=True
 )
 
 # =========================
@@ -285,9 +317,7 @@ question = st.chat_input(
 
 if question:
 
-    # =========================
-    # STORE USER MESSAGE
-    # =========================
+    # Store User Message
 
     st.session_state.messages.append(
         {
@@ -296,9 +326,7 @@ if question:
         }
     )
 
-    # =========================
-    # DISPLAY USER MESSAGE
-    # =========================
+    # Display User Message
 
     with st.chat_message("user"):
 
@@ -308,70 +336,32 @@ if question:
         "Generating answer..."
     ):
 
-        # =========================
-        # RETRIEVE DOCUMENTS
-        # =========================
+        # Conversational Retrieval
 
-        retrieved_docs = retriever.invoke(
-            question
+        response = conversation_chain.invoke(
+            {
+                "question": question
+            }
         )
 
-        # =========================
-        # CONTEXT CREATION
-        # =========================
+        answer = response["answer"]
 
-        context = "\n\n".join(
-            [
-                doc.page_content
-                .replace("z", "•")
-                .replace("\n", " ")
-                for doc in retrieved_docs
-            ]
-        )
+        source_docs = response[
+            "source_documents"
+        ]
 
-        # =========================
-        # SOURCES
-        # =========================
+        # Sources
 
         sources = list(
             set(
                 [
                     f"{doc.metadata.get('source')} (Page {doc.metadata.get('page')})"
-                    for doc in retrieved_docs
+                    for doc in source_docs
                 ]
             )
         )
 
-        # =========================
-        # PROMPT
-        # =========================
-
-        prompt = f"""
-You are a healthcare AI assistant.
-
-Answer ONLY from the given context.
-
-If information is unavailable,
-say:
-
-'The information is not available in the uploaded healthcare documents.'
-
-Context:
-{context}
-
-Question:
-{question}
-"""
-
-        # LLM RESPONSE
-
-        response = llm.invoke(
-            prompt
-        )
-
-        # =========================
-        # ASSISTANT RESPONSE
-        # =========================
+        # Assistant Response
 
         with st.chat_message(
             "assistant"
@@ -381,7 +371,9 @@ Question:
 
             full_response = ""
 
-            for word in response.content.split():
+            # Streaming Effect
+
+            for word in answer.split():
 
                 full_response += word + " "
 
@@ -393,6 +385,8 @@ Question:
                 full_response
             )
 
+            # Sources
+
             st.subheader(
                 "Sources"
             )
@@ -400,13 +394,12 @@ Question:
             for source in sources:
 
                 st.write(source)
-                
-    # STORE ASSISTANT RESPONSE
 
+    # Store Assistant Response
 
     st.session_state.messages.append(
         {
             "role": "assistant",
-            "content": response.content
+            "content": answer
         }
     )
