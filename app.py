@@ -51,6 +51,28 @@ Example Questions:
 • What treatment is recommended for hypertension?
 """
 )
+uploaded_files = st.file_uploader(
+    "Upload Healthcare PDFs",
+    type="pdf",
+    accept_multiple_files=True
+)
+
+if uploaded_files:
+
+    os.makedirs("uploads", exist_ok=True)
+
+    for uploaded_file in uploaded_files:
+
+        save_path = os.path.join(
+            "uploads",
+            uploaded_file.name
+        )
+
+        with open(save_path, "wb") as f:
+
+            f.write(uploaded_file.read())
+
+    st.success("PDFs uploaded successfully!")
 
 # =========================
 # EMBEDDINGS
