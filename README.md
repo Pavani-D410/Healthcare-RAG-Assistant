@@ -96,62 +96,75 @@ The application follows a complete Retrieval-Augmented Generation (RAG) pipeline
 
 # Tech Stack
 
-|Component| Technology|
+| Component | Technology |
 |---|---|
-|Frontend| Streamlit|
-|Framework| LangChain|
-|LLM| Groq|
-|Embeddings| HuggingFace Sentence Transformers|
-|Vector Database| FAISS|
-|Programming Language| Python|
+| Frontend | Streamlit |
+| Framework | LangChain |
+| LLM | Groq |
+| Embeddings | HuggingFace Sentence Transformers |
+| Vector Database | FAISS |
+| Programming Language | Python |
 
 ---
 
 # Installation
 
 ## Clone Repository
-bash
-git clone https://github.com/Pavani-D410/Healthcare-RAG-Assistant
+
+```bash
+git clone https://github.com/Pavani-D410/Healthcare-RAG-Assistant.git
 cd Healthcare-RAG-Assistant
+```
 
 ---
 
 ## Create Virtual Environment
 
 ### Windows
-bash
+
+```bash
 python -m venv venv
 venv\Scripts\activate
+```
 
 ### Linux / Mac
-bash
+
+```bash
 python3 -m venv venv
 source venv/bin/activate
+```
 
 ---
 
 ## Install Dependencies
-bash
+
+```bash
 pip install -r requirements.txt
+```
 
 ---
 
 # Environment Variables
 
-Create a ".env" file in the project root directory.
+Create a `.env` file in the project root directory.
 
+```env
 GROQ_API_KEY=your_api_key
+```
 
 ---
 
 # Run Application
-bash
+
+```bash
 streamlit run app.py
+```
 
 ---
 
 # Project Structure
-text
+
+```text
 Healthcare-RAG-Assistant/
 │
 ├── app.py
@@ -159,7 +172,9 @@ Healthcare-RAG-Assistant/
 ├── .env
 ├── uploads/
 ├── vectorstore/
-└── assets/
+├── healtharchitecture.jpeg
+└── .gitignore
+```
 
 ---
 
@@ -189,6 +204,6 @@ Healthcare-RAG-Assistant/
 
 ---
 
-Author
+# Author
 
-Pavani Dangudubiyyam
+**Pavani Dangudubiyyam**
