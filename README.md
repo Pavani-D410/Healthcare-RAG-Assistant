@@ -110,7 +110,7 @@ The application follows a complete Retrieval-Augmented Generation (RAG) pipeline
 # Installation
 
 ## Clone Repository
-
+bash
 git clone https://github.com/Pavani-D410/Healthcare-RAG-Assistant
 cd Healthcare-RAG-Assistant
 
@@ -119,19 +119,19 @@ cd Healthcare-RAG-Assistant
 ## Create Virtual Environment
 
 ### Windows
-
+bash
 python -m venv venv
 venv\Scripts\activate
 
 ### Linux / Mac
-
+bash
 python3 -m venv venv
 source venv/bin/activate
 
 ---
 
 ## Install Dependencies
-
+bash
 pip install -r requirements.txt
 
 ---
@@ -145,13 +145,13 @@ GROQ_API_KEY=your_api_key
 ---
 
 # Run Application
-
+bash
 streamlit run app.py
 
 ---
 
 # Project Structure
-
+text
 Healthcare-RAG-Assistant/
 │
 ├── app.py
